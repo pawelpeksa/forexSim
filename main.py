@@ -26,6 +26,7 @@ class Simulation(object):
         self.reference_rate = self.rates[0]
 
     def simulate(self):
+        print("Steps numer:{0}".format(len(self.rates)))
         for rate in self.rates:
             self.do_step(rate)
 
@@ -38,18 +39,18 @@ class Simulation(object):
             self.sell()
 
     def buy(self):
-        print("I buy")
-        buy_rate = self.current_rate * 1.00354
+        print("I buy, current_rate:{0} reference rate:{1}".format(self.current_rate, self.reference_rate))
+        buy_rate = self.current_rate * 1.00354 # 1.00354 - buy spread
         self.reference_rate = self.current_rate
 
         self.get_provision()
 
-        self.eur_credit = (self.pln_credit) * 1.0/buy_rate
+        self.eur_credit = (self.pln_credit) * (1.0/buy_rate)
         self.pln_credit = 0.0
 
     def sell(self):
         print("I sell")
-        sell_rate = self.current_rate * 0.996403
+        sell_rate = self.current_rate * 0.996403 # 0.996403 - sell spread
         self.reference_rate = self.current_rate
 
         self.pln_credit = (self.eur_credit * sell_rate)
@@ -65,10 +66,12 @@ class Simulation(object):
         self.pln_credit -= provision
 
     def should_buy(self):
-        return is_close_zero(self.eur_credit) and self.current_rate - self.reference_rate < -0.1
-
+        diff = self.current_rate - self.reference_rate
+        return is_close_zero(self.eur_credit) and diff/self.reference_rate < -0.02
+        
     def should_sell(self):
-        return is_close_zero(self.pln_credit) and self.current_rate - self.reference_rate > 0.1
+        diff = self.current_rate - self.reference_rate
+        return is_close_zero(self.pln_credit) and diff/self.reference_rate > 0.002
 
     def print_rates(self):
         print(self.rates)
@@ -82,7 +85,8 @@ class Simulation(object):
 
 def main():
     print("forex sim 0.1")
-    sim = Simulation("eur_pln.dat", 1000)
+    #sim = Simulation("eur_pln.dat", 1000)
+    sim = Simulation("test_data.dat", 1000)
     sim.read_data()
     sim.simulate()
     sim.print_result()
