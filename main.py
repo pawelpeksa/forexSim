@@ -1,7 +1,12 @@
 import csv
 import numpy as np
 
+def is_close(a, b, rel_tol=1e-09, abs_tol=0.0):
+    return abs(a-b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
 
+def is_close_zero(a):
+    return is_close(a, 0.0)
+    
 class Simulation(object):
     def __init__(self, data_file, credit):
         self.data_file = data_file
@@ -33,6 +38,7 @@ class Simulation(object):
             self.sell()
 
     def buy(self):
+        print("I buy")
         buy_rate = self.current_rate * 1.00354
         self.reference_rate = self.current_rate
 
@@ -42,6 +48,7 @@ class Simulation(object):
         self.pln_credit = 0.0
 
     def sell(self):
+        print("I sell")
         sell_rate = self.current_rate * 0.996403
         self.reference_rate = self.current_rate
 
@@ -51,21 +58,23 @@ class Simulation(object):
         self.get_provision()
 
     def get_provision(self):
-        self.pln_credit -= 2.0
+        provision = 2.0
+        if self.pln_credit < provision:
+            raise RuntimeError("No plns to get provision")
+            
+        self.pln_credit -= provision
 
     def should_buy(self):
-        should = int(self.eur_credit) == 0 and self.current_rate - self.reference_rate < -0.1
-        print(should)
-        return should
+        return is_close_zero(self.eur_credit) and self.current_rate - self.reference_rate < -0.1
 
     def should_sell(self):
-        return int(self.pln_credit) == 0 and self.current_rate - self.reference_rate > 0.1
+        return is_close_zero(self.pln_credit) and self.current_rate - self.reference_rate > 0.1
 
     def print_rates(self):
         print(self.rates)
 
     def print_result(self):
-        if int(self.pln_credit) != 0:
+        if not is_close_zero(self.pln_credit):
             print("Left {0} PLN".format(self.pln_credit))
         else:
             print("Left {0} EUR which is {1} PLN with rate: {2}".format(self.eur_credit, self.eur_credit*self.current_rate, self.current_rate))
