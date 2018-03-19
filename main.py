@@ -22,7 +22,7 @@ class Simulation(object):
             data = list(reader)
 
         npdata = np.array(data)
-        self.rates = (npdata[:,3]).astype(float)
+        self.rates = (npdata[:,0]).astype(float)
         self.reference_rate = self.rates[0]
 
     def simulate(self):
@@ -86,7 +86,7 @@ class Simulation(object):
 def main():
     print("forex sim 0.1")
     #sim = Simulation("eur_pln.dat", 1000)
-    sim = Simulation("test_data.dat", 1000)
+    sim = Simulation("gpw_d.csv.txt", 1000)
     sim.read_data()
     sim.simulate()
     sim.print_result()
