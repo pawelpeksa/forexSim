@@ -1,15 +1,24 @@
 import csv
 import numpy as np
+from hyperopt import fmin, tpe, space_eval, hp
+
+
+
 
 def is_close(a, b, rel_tol=1e-09, abs_tol=0.0):
     return abs(a-b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
 
+
 def is_close_zero(a):
     return is_close(a, 0.0)
     
+
 class Simulation(object):
-    def __init__(self, data_file, credit):
+    def __init__(self, data_file, credit, buy_threshold, sell_threshold):
         self.data_file = data_file
+	self.buy_threshold = buy_threshold
+	self.sell_threshold = sell_threshold
+
         self.rates = None
         self.pln_credit = credit
         self.eur_credit = 0.0
@@ -26,7 +35,6 @@ class Simulation(object):
         self.reference_rate = self.rates[0]
 
     def simulate(self):
-        print("Steps numer:{0}".format(len(self.rates)))
         for rate in self.rates:
             self.do_step(rate)
 
@@ -39,7 +47,6 @@ class Simulation(object):
             self.sell()
 
     def buy(self):
-        print("I buy, current_rate:{0} reference rate:{1}".format(self.current_rate, self.reference_rate))
         buy_rate = self.current_rate * 1.00354 # 1.00354 - buy spread
         self.reference_rate = self.current_rate
 
@@ -49,7 +56,6 @@ class Simulation(object):
         self.pln_credit = 0.0
 
     def sell(self):
-        print("I sell")
         sell_rate = self.current_rate * 0.996403 # 0.996403 - sell spread
         self.reference_rate = self.current_rate
 
@@ -67,11 +73,11 @@ class Simulation(object):
 
     def should_buy(self):
         diff = self.current_rate - self.reference_rate
-        return is_close_zero(self.eur_credit) and diff/self.reference_rate < -0.02
+        return is_close_zero(self.eur_credit) and diff/self.reference_rate < self.buy_threshold
         
     def should_sell(self):
         diff = self.current_rate - self.reference_rate
-        return is_close_zero(self.pln_credit) and diff/self.reference_rate > 0.002
+        return is_close_zero(self.pln_credit) and diff/self.reference_rate > self.sell_threshold
 
     def print_rates(self):
         print(self.rates)
@@ -82,14 +88,60 @@ class Simulation(object):
         else:
             print("Left {0} EUR which is {1} PLN with rate: {2}".format(self.eur_credit, self.eur_credit*self.current_rate, self.current_rate))
 
+    def get_result(self):
+        if not is_close_zero(self.pln_credit):
+            return self.pln_credit
+        else:
+            return self.eur_credit*self.current_rate
 
-def main():
-    print("forex sim 0.1")
-    #sim = Simulation("eur_pln.dat", 1000)
-    sim = Simulation("gpw_d.csv.txt", 1000)
+BUY_THRESHOLD_KEY = "buy_threshold_key"
+SELL_THRESOLD_KEY = "sell_threshold_key"
+
+class Optimizer(object):
+    def __init__(self):
+	self._init_hyper_space()
+	self._loss_number = 0
+	self._win_number = 0
+
+    def optimize(self):
+	result = fmin(fn=self._objective, space=self._hyper_space, algo=tpe.suggest, max_evals=3000)
+	print("Loss number:{0} win number:{1}".format(self._loss_number, self._win_number))
+	return space_eval(self._hyper_space, result)
+
+    def _objective(self, args):
+        buy_threshold, sell_threshold = args
+
+	sim = Simulation("gpw_d.csv.txt", 1000, buy_threshold, sell_threshold)
+	sim.read_data()
+	sim.simulate()
+	result = sim.get_result()
+
+	if result < 1000.0:
+	    self._loss_number += 1 
+	else:
+	    self._win_number += 1
+
+        print("Result:{0}".format(result))
+ 	return 1.0/result
+
+    def _init_hyper_space(self):
+	self._hyper_space = [hp.uniform(BUY_THRESHOLD_KEY, -0.5, 0.0), hp.uniform(SELL_THRESOLD_KEY, 0.0, 0.5)]
+
+
+
+def simulate(buy_threshold, sell_threshold):
+    sim = Simulation("gpw_d.csv.txt", 1000, buy_threshold, sell_threshold)
     sim.read_data()
     sim.simulate()
     sim.print_result()
+    print("Used parameters buy_threshold:{0} sell_threshold:{1}", buy_threshold, sell_threshold)
+
+
+def main():
+   optimizer = Optimizer()
+   result = optimizer.optimize()
+
+   simulate(result[0], result[1])
 
 
 if __name__ == "__main__":
