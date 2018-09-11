@@ -16,8 +16,8 @@ def is_close_zero(a):
 class Simulation(object):
     def __init__(self, data_file, credit, buy_threshold, sell_threshold):
         self.data_file = data_file
-	self.buy_threshold = buy_threshold
-	self.sell_threshold = sell_threshold
+        self.buy_threshold = buy_threshold
+        self.sell_threshold = sell_threshold
 
         self.rates = None
         self.pln_credit = credit
@@ -99,33 +99,33 @@ SELL_THRESOLD_KEY = "sell_threshold_key"
 
 class Optimizer(object):
     def __init__(self):
-	self._init_hyper_space()
-	self._loss_number = 0
-	self._win_number = 0
+        self._init_hyper_space()
+        self._loss_number = 0
+        self._win_number = 0
 
     def optimize(self):
-	result = fmin(fn=self._objective, space=self._hyper_space, algo=tpe.suggest, max_evals=3000)
-	print("Loss number:{0} win number:{1}".format(self._loss_number, self._win_number))
-	return space_eval(self._hyper_space, result)
+        result = fmin(fn=self._objective, space=self._hyper_space, algo=tpe.suggest, max_evals=3000)
+        print("Loss number:{0} win number:{1}".format(self._loss_number, self._win_number))
+        return space_eval(self._hyper_space, result)
 
     def _objective(self, args):
         buy_threshold, sell_threshold = args
 
-	sim = Simulation("gpw_d.csv.txt", 1000, buy_threshold, sell_threshold)
-	sim.read_data()
-	sim.simulate()
-	result = sim.get_result()
+        sim = Simulation("gpw_d.csv.txt", 1000, buy_threshold, sell_threshold)
+        sim.read_data()
+        sim.simulate()
+        result = sim.get_result()
 
-	if result < 1000.0:
-	    self._loss_number += 1 
-	else:
-	    self._win_number += 1
+        if result < 1000.0:
+            self._loss_number += 1 
+        else:
+            self._win_number += 1
 
-        print("Result:{0}".format(result))
- 	return 1.0/result
+            print("Result:{0}".format(result))
+        return 1.0/result
 
     def _init_hyper_space(self):
-	self._hyper_space = [hp.uniform(BUY_THRESHOLD_KEY, -0.5, 0.0), hp.uniform(SELL_THRESOLD_KEY, 0.0, 0.5)]
+        self._hyper_space = [hp.uniform(BUY_THRESHOLD_KEY, -0.5, 0.0), hp.uniform(SELL_THRESOLD_KEY, 0.0, 0.5)]
 
 
 
